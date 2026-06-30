@@ -1,0 +1,167 @@
+<?php
+
+declare(strict_types=1);
+
+use AiSdk\Content;
+use AiSdk\InputEncoding;
+use AiSdk\Message;
+use AiSdk\OpenAICompatible\ChatRequestBuilder;
+use AiSdk\OpenAICompatible\ChatResponseParser;
+use AiSdk\OpenAICompatible\ChatStreamParser;
+use AiSdk\Reasoning;
+use AiSdk\Requests\TextModelRequest;
+use AiSdk\Streaming\StreamState;
+
+function request(array $overrides = []): TextModelRequest
+{
+    return new TextModelRequest(
+        messages: $overrides['messages'] ?? [Message::user('Hi')],
+        system: $overrides['system'] ?? null,
+        reasoning: $overrides['reasoning'] ?? null,
+        providerOptions: $overrides['providerOptions'] ?? [],
+    );
+}
+
+it('builds a basic chat body', function () {
+    $body = ChatRequestBuilder::build('gpt-4o', 'openai', request(['system' => 'Be terse']), false);
+
+    expect($body['model'])->toBe('gpt-4o')
+        ->and($body['messages'][0])->toBe(['role' => 'system', 'content' => 'Be terse'])
+        ->and($body['messages'][1])->toBe(['role' => 'user', 'content' => 'Hi'])
+        ->and($body['stream'])->toBeFalse();
+});
+
+it('maps reasoning effort through a single path', function () {
+    $body = ChatRequestBuilder::build('o3', 'openai', request(['reasoning' => Reasoning::effort('high')]), false);
+
+    expect($body['reasoning_effort'])->toBe('high');
+});
+
+it('does not silently ignore explicit reasoning token budgets', function () {
+    ChatRequestBuilder::build('o3', 'openai', request(['reasoning' => Reasoning::budget(4096)]), false);
+})->throws(\AiSdk\Exceptions\InvalidArgumentException::class);
+
+it('merges the provider raw escape hatch last', function () {
+    $body = ChatRequestBuilder::build('gpt-4o', 'openai', request([
+        'providerOptions' => ['openai' => ['raw' => ['temperature' => 0.1, 'seed' => 42]]],
+    ]), false);
+
+    expect($body['temperature'])->toBe(0.1)
+        ->and($body['seed'])->toBe(42);
+});
+
+it('parses a chat response with a tool call', function () {
+    $payload = [
+        'id' => 'chatcmpl_123',
+        'object' => 'chat.completion',
+        'created' => 1710000000,
+        'model' => 'gpt-4o',
+        'system_fingerprint' => 'fp_abc',
+        'choices' => [[
+            'index' => 0,
+            'message' => [
+                'content' => 'hello',
+                'tool_calls' => [[
+                    'id' => 'call_1',
+                    'function' => ['name' => 'weather', 'arguments' => '{"city":"Lahore"}'],
+                ]],
+            ],
+            'finish_reason' => 'tool_calls',
+        ]],
+        'usage' => ['prompt_tokens' => 10, 'completion_tokens' => 4],
+    ];
+
+    $response = ChatResponseParser::parse($payload, 'openai');
+
+    expect($response->text())->toBe('hello')
+        ->and($response->toolCalls())->toHaveCount(1)
+        ->and($response->toolCalls()[0]->arguments)->toBe(['city' => 'Lahore'])
+        ->and($response->usage->inputTokens)->toBe(10)
+        ->and($response->providerMetadata['openai']['id'])->toBe('chatcmpl_123')
+        ->and($response->providerMetadata['openai']['model'])->toBe('gpt-4o')
+        ->and($response->providerMetadata['openai']['choice_finish_reason'])->toBe('tool_calls');
+});
+
+it('parses streamed tool-call fragments into one accumulated call', function () {
+    $events = [
+        ['event' => null, 'data' => json_encode(['id' => 'chatcmpl_stream', 'model' => 'gpt-4o', 'choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'call_1', 'function' => ['name' => 'weather', 'arguments' => '']]]]]]])],
+        ['event' => null, 'data' => json_encode(['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => '{"ci']]]]]]])],
+        ['event' => null, 'data' => json_encode(['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => 'ty":"Oslo"}']]]]]]])],
+        ['event' => null, 'data' => json_encode(['choices' => [['index' => 0, 'delta' => [], 'finish_reason' => 'tool_calls']]])],
+        ['event' => null, 'data' => '[DONE]'],
+    ];
+
+    $state = new StreamState();
+    foreach (ChatStreamParser::parse($events, 'openai') as $part) {
+        $state->record($part);
+    }
+
+    expect($state->toolCalls())->toHaveCount(1)
+        ->and($state->toolCalls()[0]->name)->toBe('weather')
+        ->and($state->toolCalls()[0]->arguments)->toBe(['city' => 'Oslo'])
+        ->and($state->providerMetadata()['openai']['id'])->toBe('chatcmpl_stream')
+        ->and($state->providerMetadata()['openai']['choice_finish_reason'])->toBe('tool_calls');
+});
+
+it('includes tool result names in converted messages', function () {
+    $body = ChatRequestBuilder::build('gpt-4o', 'openai', request([
+        'messages' => [
+            Message::user('Use the weather tool.'),
+            Message::tool(toolCallId: 'call_1', output: 'Sunny', name: 'weather'),
+        ],
+    ]), false);
+
+    expect($body['messages'][1])->toMatchArray([
+        'role' => 'tool',
+        'tool_call_id' => 'call_1',
+        'name' => 'weather',
+        'content' => 'Sunny',
+    ]);
+});
+
+it('includes assistant tool calls in converted messages', function () {
+    $body = ChatRequestBuilder::build('gpt-4o', 'openai', request([
+        'messages' => [
+            Message::assistant('', toolCalls: [
+                new \AiSdk\ToolCall('call_1', 'weather', ['city' => 'Lahore']),
+            ]),
+        ],
+    ]), false);
+
+    expect($body['messages'][0])->toMatchArray([
+        'role' => 'assistant',
+        'content' => null,
+        'tool_calls' => [[
+            'id' => 'call_1',
+            'type' => 'function',
+            'function' => [
+                'name' => 'weather',
+                'arguments' => '{"city":"Lahore"}',
+            ],
+        ]],
+    ]);
+});
+
+it('converts typed multimodal input content', function () {
+    $body = ChatRequestBuilder::build('gpt-4o-audio-preview', 'openai', request([
+        'messages' => [
+            Message::user([
+                Content::text('Describe these inputs.'),
+                Content::image('https://example.com/photo.png'),
+                Content::audio('UklGRg==', mimeType: 'audio/wav', encoding: InputEncoding::Base64),
+                Content::file('JVBERi0=', mimeType: 'application/pdf', filename: 'report.pdf', encoding: InputEncoding::Base64),
+            ]),
+        ],
+    ]), false);
+
+    expect($body['messages'][0]['content'][0])->toBe(['type' => 'text', 'text' => 'Describe these inputs.'])
+        ->and($body['messages'][0]['content'][1])->toBe(['type' => 'image_url', 'image_url' => ['url' => 'https://example.com/photo.png']])
+        ->and($body['messages'][0]['content'][2])->toBe(['type' => 'input_audio', 'input_audio' => ['data' => 'UklGRg==', 'format' => 'wav']])
+        ->and($body['messages'][0]['content'][3])->toBe([
+            'type' => 'file',
+            'file' => [
+                'filename' => 'report.pdf',
+                'file_data' => 'data:application/pdf;base64,JVBERi0=',
+            ],
+        ]);
+});
