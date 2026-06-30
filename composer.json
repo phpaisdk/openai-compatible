@@ -2,6 +2,18 @@
     "name": "aisdk/openai-compatible",
     "description": "Shared OpenAI-compatible chat-completions wire format (request builder, response/stream parsers) for the PHP AI SDK.",
     "license": "MIT",
+    "keywords": [
+        "ai",
+        "aisdk",
+        "chat-completions",
+        "llm",
+        "openai-compatible"
+    ],
+    "homepage": "https://github.com/phpaisdk/openai-compatible",
+    "support": {
+        "issues": "https://github.com/phpaisdk/openai-compatible/issues",
+        "source": "https://github.com/phpaisdk/openai-compatible"
+    },
     "require": {
         "php": "^8.3",
         "aisdk/core": "^0.1"
@@ -13,6 +25,8 @@
         "phpstan/phpstan": "^2.0",
         "rector/rector": "^2.0"
     },
+    "minimum-stability": "alpha",
+    "prefer-stable": true,
     "autoload": {
         "psr-4": {
             "AiSdk\\OpenAICompatible\\": "src/"
@@ -37,11 +51,10 @@
         ]
     },
     "config": {
+        "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
         }
-    },
-    "minimum-stability": "alpha",
-    "prefer-stable": true
+    }
 }
