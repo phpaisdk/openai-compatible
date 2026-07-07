@@ -85,6 +85,28 @@ it('parses a chat response with a tool call', function () {
         ->and($response->providerMetadata['openai']['choice_finish_reason'])->toBe('tool_calls');
 });
 
+it('parses provider-neutral usage token fields', function () {
+    $response = ChatResponseParser::parse([
+        'choices' => [[
+            'message' => ['content' => 'hello'],
+            'finish_reason' => 'stop',
+        ]],
+        'usage' => [
+            'input_tokens' => 12,
+            'output_tokens' => 8,
+            'total_tokens' => 20,
+            'output_tokens_details' => ['reasoning_tokens' => 3],
+            'input_tokens_details' => ['cached_tokens' => 4],
+        ],
+    ], 'openai-compatible');
+
+    expect($response->usage->inputTokens)->toBe(12)
+        ->and($response->usage->outputTokens)->toBe(8)
+        ->and($response->usage->totalTokens)->toBe(20)
+        ->and($response->usage->reasoningTokens)->toBe(3)
+        ->and($response->usage->cachedInputTokens)->toBe(4);
+});
+
 it('parses streamed tool-call fragments into one accumulated call', function () {
     $events = [
         ['event' => null, 'data' => json_encode(['id' => 'chatcmpl_stream', 'model' => 'gpt-4o', 'choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'call_1', 'function' => ['name' => 'weather', 'arguments' => '']]]]]]])],
