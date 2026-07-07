@@ -1,6 +1,6 @@
 # aisdk/openai-compatible
 
-Shared OpenAI-compatible chat-completions wire adapter for the PHP AI SDK. Reusable by any provider that speaks the OpenAI `/chat/completions` REST/SSE protocol.
+Shared OpenAI-compatible wire adapter for the PHP AI SDK. Reusable by any provider that speaks OpenAI-compatible chat completions or image generation APIs.
 
 ## Installation
 
@@ -10,12 +10,14 @@ composer require aisdk/openai-compatible
 
 ## What This Package Does
 
-This package provides the shared wire-format bridge between core portable contracts (`AiSdk\*`) and the OpenAI-compatible chat-completions shape. It is used by providers like Groq, xAI, OpenRouter, and others that implement the OpenAI-compatible API.
+This package provides the shared wire-format bridge between core portable contracts (`AiSdk\*`) and OpenAI-compatible provider shapes. It is used by providers like Groq, xAI, OpenRouter, and others that implement the OpenAI-compatible API.
 
 It owns:
 - Request body building (`ChatRequestBuilder`)
 - Response parsing (`ChatResponseParser`)
 - SSE stream parsing (`ChatStreamParser`)
+- Image request body building (`ImageRequestBuilder`)
+- Image response parsing (`ImageResponseParser`)
 - Message conversion (`ChatMessageConverter`)
 - Tool conversion (`ChatToolConverter`)
 - Usage normalization (`ChatUsage`)
@@ -40,6 +42,17 @@ $payload = $this->runner()->postJson($url, $body, $headers, $providerName);
 $response = ChatResponseParser::parse($payload, $providerName);
 ```
 
+For image generation endpoints:
+
+```php
+use AiSdk\OpenAICompatible\ImageRequestBuilder;
+use AiSdk\OpenAICompatible\ImageResponseParser;
+
+$body = ImageRequestBuilder::build($modelId, $providerName, $request);
+$payload = $this->runner()->postJson($url, $body, $headers, $providerName);
+$response = ImageResponseParser::parse($payload, $providerName);
+```
+
 ## Provider Integration
 
 To build a provider on top of this package:
@@ -49,6 +62,8 @@ To build a provider on top of this package:
 3. Create a text model extending `BaseModel` that calls `ChatRequestBuilder::build()`, `ChatResponseParser::parse()`, and `ChatStreamParser::parse()`.
 4. Add provider-specific auth, base URL, headers, and model catalog.
 5. Apply any provider-specific adaptations (e.g., structured output downgrades) after calling `ChatRequestBuilder::build()`.
+
+For image generation, create an image model implementing `ImageModelInterface`, call `ImageRequestBuilder::build()`, then parse the provider payload with `ImageResponseParser::parse()`. Provider packages still own authentication, endpoint paths, model catalogs, and public facades.
 
 ## Testing
 
