@@ -8,7 +8,10 @@ use AiSdk\Message;
 use AiSdk\OpenAICompatible\ChatRequestBuilder;
 use AiSdk\OpenAICompatible\ChatResponseParser;
 use AiSdk\OpenAICompatible\ChatStreamParser;
+use AiSdk\OpenAICompatible\ImageRequestBuilder;
+use AiSdk\OpenAICompatible\ImageResponseParser;
 use AiSdk\Reasoning;
+use AiSdk\Requests\ImageRequest;
 use AiSdk\Requests\TextModelRequest;
 use AiSdk\Streaming\StreamState;
 
@@ -164,4 +167,63 @@ it('converts typed multimodal input content', function () {
                 'file_data' => 'data:application/pdf;base64,JVBERi0=',
             ],
         ]);
+});
+
+it('builds an image generation body', function () {
+    $body = ImageRequestBuilder::build('image-model', 'openai-compatible', new ImageRequest(
+        prompt: 'A clean product photo',
+        count: 2,
+        size: '1024x1024',
+        providerOptions: ['openai-compatible' => ['raw' => ['background' => 'transparent']]],
+    ));
+
+    expect($body)->toMatchArray([
+        'model' => 'image-model',
+        'prompt' => 'A clean product photo',
+        'n' => 2,
+        'size' => '1024x1024',
+        'response_format' => 'b64_json',
+        'background' => 'transparent',
+    ]);
+});
+
+it('maps common image aspect ratios to OpenAI-compatible sizes', function () {
+    $body = ImageRequestBuilder::build('image-model', 'openai-compatible', new ImageRequest(
+        prompt: 'A wide product scene',
+        aspectRatio: '16:9',
+    ));
+
+    expect($body['size'])->toBe('1536x1024');
+});
+
+it('rejects image aspect ratios that cannot be mapped to an OpenAI-compatible size', function () {
+    ImageRequestBuilder::build('image-model', 'openai-compatible', new ImageRequest(
+        prompt: 'A cinematic scene',
+        aspectRatio: '21:9',
+    ));
+})->throws(\AiSdk\Exceptions\InvalidArgumentException::class);
+
+it('parses an image generation response', function () {
+    $response = ImageResponseParser::parse([
+        'id' => 'img_123',
+        'created' => 1710000000,
+        'model' => 'image-model',
+        'size' => '1024x1024',
+        'data' => [[
+            'b64_json' => base64_encode('image-bytes'),
+            'mime_type' => 'image/webp',
+            'width' => 1024,
+            'height' => 1024,
+        ]],
+        'usage' => [
+            'input_tokens' => 12,
+            'output_tokens' => 8,
+            'total_tokens' => 20,
+        ],
+    ], 'openai-compatible');
+
+    expect($response->first()?->bytes())->toBe('image-bytes')
+        ->and($response->first()?->mimeType)->toBe('image/webp')
+        ->and($response->usage->totalTokens)->toBe(20)
+        ->and($response->providerMetadata['openai-compatible']['id'])->toBe('img_123');
 });
