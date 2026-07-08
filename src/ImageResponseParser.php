@@ -51,7 +51,7 @@ final class ImageResponseParser
                     'size' => is_string($payload['size'] ?? null) ? $payload['size'] : null,
                     'quality' => is_string($payload['quality'] ?? null) ? $payload['quality'] : null,
                     'output_format' => is_string($payload['output_format'] ?? null) ? $payload['output_format'] : null,
-                ], static fn ($value): bool => $value !== null),
+                ], static fn($value): bool => $value !== null),
             ],
         );
     }

@@ -73,7 +73,7 @@ final class ImageRequestBuilder
             '2:3', '9:16' => '1024x1536',
             default => throw new InvalidArgumentException(sprintf(
                 'OpenAI-compatible image generation cannot infer a portable size for aspect ratio [%s]. Pass size() or providerOptions().',
-                $aspectRatio
+                $aspectRatio,
             )),
         };
     }

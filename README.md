@@ -1,6 +1,6 @@
 # aisdk/openai-compatible
 
-Shared OpenAI-compatible wire adapter for the PHP AI SDK. Reusable by any provider that speaks OpenAI-compatible chat completions or image generation APIs.
+Shared OpenAI-compatible wire adapter for the PHP AI SDK. Reusable by any provider that speaks OpenAI-compatible chat completions, image generation, or speech generation APIs.
 
 ## Installation
 
@@ -18,6 +18,8 @@ It owns:
 - SSE stream parsing (`ChatStreamParser`)
 - Image request body building (`ImageRequestBuilder`)
 - Image response parsing (`ImageResponseParser`)
+- Speech request body building (`SpeechRequestBuilder`)
+- Speech response parsing (`SpeechResponseParser`)
 - Message conversion (`ChatMessageConverter`)
 - Tool conversion (`ChatToolConverter`)
 - Usage normalization (`ChatUsage`)
@@ -53,6 +55,17 @@ $payload = $this->runner()->postJson($url, $body, $headers, $providerName);
 $response = ImageResponseParser::parse($payload, $providerName);
 ```
 
+For speech generation endpoints:
+
+```php
+use AiSdk\OpenAICompatible\SpeechRequestBuilder;
+use AiSdk\OpenAICompatible\SpeechResponseParser;
+
+$body = SpeechRequestBuilder::build($modelId, $providerName, $request);
+$response = $this->runner()->postRaw($url, $body, $headers, $providerName);
+$parsed = SpeechResponseParser::parse($response, $providerName, 'audio/mpeg');
+```
+
 ## Provider Integration
 
 To build a provider on top of this package:
@@ -63,7 +76,7 @@ To build a provider on top of this package:
 4. Add provider-specific auth, base URL, headers, and model catalog.
 5. Apply any provider-specific adaptations (e.g., structured output downgrades) after calling `ChatRequestBuilder::build()`.
 
-For image generation, create an image model implementing `ImageModelInterface`, call `ImageRequestBuilder::build()`, then parse the provider payload with `ImageResponseParser::parse()`. Provider packages still own authentication, endpoint paths, model catalogs, and public facades.
+For image generation, create an image model implementing `ImageModelInterface`, call `ImageRequestBuilder::build()`, then parse the provider payload with `ImageResponseParser::parse()`. For speech generation, create a speech model implementing `SpeechModelInterface`, call `SpeechRequestBuilder::build()`, then parse the raw audio response with `SpeechResponseParser::parse()`. Provider packages still own authentication, endpoint paths, model catalogs, and public facades.
 
 ## Testing
 
