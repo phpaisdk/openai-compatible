@@ -34,3 +34,7 @@ it('parses OpenAI-compatible raw speech responses', function () {
         ->and($parsed->providerMetadata['openrouter']['model'])->toBe('microsoft/mai-voice-2')
         ->and($parsed->providerMetadata['openrouter']['x-generation-id'])->toBe('gen_123');
 });
+
+it('rejects empty speech responses', function () {
+    SpeechResponseParser::parse(new Response(200, ['Content-Type' => 'audio/mpeg'], ''), 'openrouter', 'audio/mpeg');
+})->throws(\AiSdk\Exceptions\InvalidResponseException::class);

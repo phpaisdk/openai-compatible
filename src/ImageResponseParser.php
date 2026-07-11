@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AiSdk\OpenAICompatible;
 
+use AiSdk\Exceptions\InvalidResponseException;
 use AiSdk\Responses\ImageResponse;
 use AiSdk\Results\ImageData;
 use AiSdk\Support\Usage;
@@ -24,9 +25,7 @@ final class ImageResponseParser
 
             $images[] = new ImageData(
                 base64: is_string($item['b64_json'] ?? null) ? $item['b64_json'] : null,
-                mimeType: is_string($item['mime_type'] ?? null)
-                    ? $item['mime_type']
-                    : (is_string($item['media_type'] ?? null) ? $item['media_type'] : 'image/png'),
+                mimeType: self::mimeType($item, $payload),
                 width: is_int($item['width'] ?? null) ? $item['width'] : null,
                 height: is_int($item['height'] ?? null) ? $item['height'] : null,
                 url: is_string($item['url'] ?? null) ? $item['url'] : null,
@@ -34,6 +33,14 @@ final class ImageResponseParser
         }
 
         $usage = is_array($payload['usage'] ?? null) ? $payload['usage'] : [];
+
+        if ($images === []) {
+            throw InvalidResponseException::forProvider(
+                $providerName,
+                "Provider [{$providerName}] returned no generated images.",
+                ['body' => $payload],
+            );
+        }
 
         return new ImageResponse(
             images: $images,
@@ -62,5 +69,25 @@ final class ImageResponseParser
     private static function intValue(array $payload, string $key): ?int
     {
         return is_int($payload[$key] ?? null) ? $payload[$key] : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<string, mixed>  $payload
+     */
+    private static function mimeType(array $item, array $payload): string
+    {
+        if (is_string($item['mime_type'] ?? null)) {
+            return $item['mime_type'];
+        }
+        if (is_string($item['media_type'] ?? null)) {
+            return $item['media_type'];
+        }
+
+        return match ($payload['output_format'] ?? null) {
+            'jpeg', 'jpg' => 'image/jpeg',
+            'webp' => 'image/webp',
+            default => 'image/png',
+        };
     }
 }

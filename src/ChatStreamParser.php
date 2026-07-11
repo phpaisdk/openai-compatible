@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AiSdk\OpenAICompatible;
 
+use AiSdk\Exceptions\InvalidResponseException;
 use AiSdk\OpenAICompatible\Converters\MapsFinishReason;
 use AiSdk\OpenAICompatible\Support\ChatUsage;
 use AiSdk\Streaming\FinishPart;
@@ -43,7 +44,20 @@ final class ChatStreamParser
 
             $payload = json_decode($data, true);
             if (! is_array($payload)) {
-                continue;
+                throw InvalidResponseException::forProvider(
+                    $providerName,
+                    "Provider [{$providerName}] returned invalid JSON in its event stream.",
+                    ['body' => $data],
+                );
+            }
+
+            $error = $payload['error'] ?? null;
+            if (is_array($error) || is_string($error)) {
+                $message = is_array($error) && is_string($error['message'] ?? null)
+                    ? $error['message']
+                    : (is_string($error) ? $error : "Provider [{$providerName}] returned a stream error.");
+
+                throw InvalidResponseException::forProvider($providerName, $message, ['body' => $payload]);
             }
 
             if (isset($payload['usage']) && is_array($payload['usage'])) {
@@ -60,7 +74,19 @@ final class ChatStreamParser
 
             $choice = $payload['choices'][0] ?? null;
             if ($choice === null) {
+                if (! isset($payload['usage'])) {
+                    throw InvalidResponseException::forProvider(
+                        $providerName,
+                        "Provider [{$providerName}] returned a stream event without choices or usage.",
+                        ['body' => $payload],
+                    );
+                }
+
                 continue;
+            }
+
+            if (! is_array($choice)) {
+                throw InvalidResponseException::forProvider($providerName, "Provider [{$providerName}] returned an invalid stream choice.", ['body' => $payload]);
             }
 
             $delta = $choice['delta'] ?? [];

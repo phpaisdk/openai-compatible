@@ -6,6 +6,7 @@ use AiSdk\Content;
 use AiSdk\InputEncoding;
 use AiSdk\Message;
 use AiSdk\OpenAICompatible\ChatRequestBuilder;
+use AiSdk\OpenAICompatible\ChatRequestProfile;
 use AiSdk\OpenAICompatible\ChatResponseParser;
 use AiSdk\OpenAICompatible\ChatStreamParser;
 use AiSdk\OpenAICompatible\ImageRequestBuilder;
@@ -38,6 +39,32 @@ it('maps reasoning effort through a single path', function () {
     $body = ChatRequestBuilder::build('o3', 'openai', request(['reasoning' => Reasoning::effort('high')]), false);
 
     expect($body['reasoning_effort'])->toBe('high');
+});
+
+it('uses the OpenAI request profile for modern token limits', function () {
+    $body = ChatRequestBuilder::build(
+        'gpt-4o',
+        'openai',
+        request(),
+        false,
+        ChatRequestProfile::openAI('gpt-4o'),
+    );
+
+    expect($body)->toHaveKey('max_completion_tokens')
+        ->and($body)->not->toHaveKey('max_tokens');
+});
+
+it('omits unsupported temperature for OpenAI reasoning models', function () {
+    $body = ChatRequestBuilder::build(
+        'o3',
+        'openai',
+        request(['reasoning' => Reasoning::effort('high')]),
+        false,
+        ChatRequestProfile::openAI('o3'),
+    );
+
+    expect($body)->not->toHaveKey('temperature')
+        ->and($body['reasoning_effort'])->toBe('high');
 });
 
 it('does not silently ignore explicit reasoning token budgets', function () {
@@ -106,6 +133,33 @@ it('parses provider-neutral usage token fields', function () {
         ->and($response->usage->reasoningTokens)->toBe(3)
         ->and($response->usage->cachedInputTokens)->toBe(4);
 });
+
+it('preserves reasoning returned by a synchronous response', function () {
+    $response = ChatResponseParser::parse([
+        'choices' => [[
+            'message' => [
+                'content' => '42',
+                'reasoning_content' => 'I checked the arithmetic.',
+            ],
+            'finish_reason' => 'stop',
+        ]],
+    ], 'openai-compatible');
+
+    expect($response->text())->toBe('42')
+        ->and($response->reasoning())->toBe('I checked the arithmetic.');
+});
+
+it('rejects provider error envelopes returned with a success status', function () {
+    ChatResponseParser::parse([
+        'error' => ['message' => 'Model is unavailable.'],
+    ], 'openai-compatible');
+})->throws(\AiSdk\Exceptions\InvalidResponseException::class, 'Model is unavailable.');
+
+it('rejects malformed stream events instead of silently dropping them', function () {
+    iterator_to_array(ChatStreamParser::parse([
+        ['event' => null, 'data' => '{not-json'],
+    ], 'openai-compatible'));
+})->throws(\AiSdk\Exceptions\InvalidResponseException::class);
 
 it('parses streamed tool-call fragments into one accumulated call', function () {
     $events = [
@@ -249,3 +303,16 @@ it('parses an image generation response', function () {
         ->and($response->usage->totalTokens)->toBe(20)
         ->and($response->providerMetadata['openai-compatible']['id'])->toBe('img_123');
 });
+
+it('uses the top-level output format as the generated image mime type', function () {
+    $response = ImageResponseParser::parse([
+        'output_format' => 'webp',
+        'data' => [['b64_json' => base64_encode('image-bytes')]],
+    ], 'openai-compatible');
+
+    expect($response->first()?->mimeType)->toBe('image/webp');
+});
+
+it('rejects image responses without generated image data', function () {
+    ImageResponseParser::parse(['data' => []], 'openai-compatible');
+})->throws(\AiSdk\Exceptions\InvalidResponseException::class);

@@ -56,7 +56,12 @@ final class ImageRequestBuilder
             $body[$seedParameter] = $request->seed;
         }
 
-        $raw = $request->providerOptionsFor($providerName)['raw'] ?? null;
+        $providerOptions = $request->providerOptionsFor($providerName);
+        $raw = $providerOptions['raw'] ?? null;
+        unset($providerOptions['raw']);
+
+        $body = array_replace($body, $providerOptions);
+
         if (is_array($raw)) {
             $body = array_replace($body, $raw);
         }

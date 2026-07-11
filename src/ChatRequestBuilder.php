@@ -20,16 +20,28 @@ final class ChatRequestBuilder
     /**
      * @return array<string, mixed>
      */
-    public static function build(string $modelId, string $providerName, TextModelRequest $request, bool $stream): array
-    {
+    public static function build(
+        string $modelId,
+        string $providerName,
+        TextModelRequest $request,
+        bool $stream,
+        ?ChatRequestProfile $profile = null,
+    ): array {
+        $profile ??= new ChatRequestProfile();
+
         $body = [
             'model' => $modelId,
             'messages' => ChatMessageConverter::convert($request->messages, $request->system),
-            'temperature' => $request->temperature,
             'stream' => $stream,
         ];
 
-        $body['max_tokens'] = $request->maxTokens;
+        if ($profile->includeTemperature && ! ($profile->omitTemperatureWhenReasoning && $request->reasoning !== null)) {
+            $body['temperature'] = $request->temperature;
+        }
+
+        if ($profile->maxTokensParameter !== null) {
+            $body[$profile->maxTokensParameter] = $request->maxTokens;
+        }
 
         if ($request->topP !== null) {
             $body['top_p'] = $request->topP;
@@ -41,6 +53,10 @@ final class ChatRequestBuilder
         }
 
         if ($request->output instanceof Output) {
+            if (! $profile->supportsStructuredOutput) {
+                throw new InvalidArgumentException("Provider [{$providerName}] does not support structured output through its Chat Completions adapter.");
+            }
+
             $body = array_replace($body, self::responseFormat($request->output));
         }
 
@@ -49,15 +65,25 @@ final class ChatRequestBuilder
         }
 
         if ($request->reasoning?->effort !== null) {
-            $body['reasoning_effort'] = $request->reasoning->effort;
+            if ($profile->reasoningEffortParameter === null) {
+                throw new InvalidArgumentException("Provider [{$providerName}] does not support portable reasoning effort through its Chat Completions adapter.");
+            }
+
+            $body[$profile->reasoningEffortParameter] = $request->reasoning->effort;
         }
 
-        if ($stream) {
+        if ($stream && $profile->includeStreamOptions) {
             $body['stream_options'] = ['include_usage' => true];
         }
 
-        // Single escape hatch: provider-namespaced raw overrides merged last.
-        $raw = $request->providerOptionsFor($providerName)['raw'] ?? null;
+        $providerOptions = $request->providerOptionsFor($providerName);
+        $raw = $providerOptions['raw'] ?? null;
+        unset($providerOptions['raw']);
+
+        $body = array_replace($body, $providerOptions);
+
+        // Keep the legacy `raw` nesting as a compatibility alias. Direct,
+        // provider-namespaced options are the primary PHP API.
         if (is_array($raw)) {
             $body = array_replace($body, $raw);
         }
