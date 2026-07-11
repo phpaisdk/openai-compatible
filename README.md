@@ -1,6 +1,6 @@
 # aisdk/openai-compatible
 
-Shared OpenAI-compatible wire adapter for the PHP AI SDK. Reusable by any provider that speaks OpenAI-compatible Chat Completions, Responses, image generation, or speech generation APIs.
+Shared OpenAI-compatible wire adapter for the PHP AI SDK. Reusable by any provider that speaks OpenAI-compatible Chat Completions, Responses, embedding, image generation, or speech generation APIs.
 
 ## Installation
 
@@ -19,6 +19,8 @@ It owns:
 - Responses request body building (`ResponsesRequestBuilder`)
 - Responses response parsing (`ResponsesResponseParser`)
 - Responses SSE stream parsing (`ResponsesStreamParser`)
+- Embedding request body building (`EmbeddingRequestBuilder`)
+- Embedding response parsing (`EmbeddingResponseParser`)
 - Image request body building (`ImageRequestBuilder`)
 - Image response parsing (`ImageResponseParser`)
 - Speech request body building (`SpeechRequestBuilder`)
@@ -60,6 +62,19 @@ $response = ResponsesResponseParser::parse($payload, $providerName);
 
 For streaming, pass parsed SSE events to `ResponsesStreamParser::parse()` in the same way Chat Completions providers use `ChatStreamParser`.
 
+For embedding endpoints:
+
+```php
+use AiSdk\OpenAICompatible\EmbeddingRequestBuilder;
+use AiSdk\OpenAICompatible\EmbeddingResponseParser;
+
+$body = EmbeddingRequestBuilder::build($modelId, $providerName, $request);
+$payload = $this->runner()->postJson($url, $body, $headers, $providerName);
+$response = EmbeddingResponseParser::parse($payload, $providerName);
+```
+
+Providers can configure the dimensions field name or omit it, and can disable the default `encoding_format: float` field when their endpoint uses a different wire shape. Provider-namespaced options and `raw` values are applied after portable fields.
+
 For image generation endpoints:
 
 ```php
@@ -92,7 +107,7 @@ To build a provider on top of this package:
 4. Add provider-specific auth, base URL, headers, and adapter capabilities.
 5. Apply any provider-specific adaptations (e.g., structured output downgrades) after calling `ChatRequestBuilder::build()`.
 
-For image generation, create an image model implementing `ImageModelInterface`, call `ImageRequestBuilder::build()`, then parse the provider payload with `ImageResponseParser::parse()`. For speech generation, create a speech model implementing `SpeechModelInterface`, call `SpeechRequestBuilder::build()`, then parse the raw audio response with `SpeechResponseParser::parse()`. Provider packages still own authentication, endpoint paths, adapter capabilities, and public facades. Model IDs should pass through as opaque provider values instead of being maintained as a package-owned inventory.
+For embeddings, create a model implementing `EmbeddingModelInterface`, call `EmbeddingRequestBuilder::build()`, then parse the provider payload with `EmbeddingResponseParser::parse()`. For image generation, create an image model implementing `ImageModelInterface`, call `ImageRequestBuilder::build()`, then parse the provider payload with `ImageResponseParser::parse()`. For speech generation, create a speech model implementing `SpeechModelInterface`, call `SpeechRequestBuilder::build()`, then parse the raw audio response with `SpeechResponseParser::parse()`. Provider packages still own authentication, endpoint paths, adapter capabilities, and public facades. Model IDs should pass through as opaque provider values instead of being maintained as a package-owned inventory.
 
 ## Testing
 
