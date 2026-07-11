@@ -1,6 +1,6 @@
 # aisdk/openai-compatible
 
-Shared OpenAI-compatible wire adapter for the PHP AI SDK. Reusable by any provider that speaks OpenAI-compatible chat completions, image generation, or speech generation APIs.
+Shared OpenAI-compatible wire adapter for the PHP AI SDK. Reusable by any provider that speaks OpenAI-compatible Chat Completions, Responses, image generation, or speech generation APIs.
 
 ## Installation
 
@@ -16,6 +16,9 @@ It owns:
 - Request body building (`ChatRequestBuilder`)
 - Response parsing (`ChatResponseParser`)
 - SSE stream parsing (`ChatStreamParser`)
+- Responses request body building (`ResponsesRequestBuilder`)
+- Responses response parsing (`ResponsesResponseParser`)
+- Responses SSE stream parsing (`ResponsesStreamParser`)
 - Image request body building (`ImageRequestBuilder`)
 - Image response parsing (`ImageResponseParser`)
 - Speech request body building (`SpeechRequestBuilder`)
@@ -43,6 +46,19 @@ $body = ChatRequestBuilder::build($modelId, $providerName, $request, stream: fal
 $payload = $this->runner()->postJson($url, $body, $headers, $providerName);
 $response = ChatResponseParser::parse($payload, $providerName);
 ```
+
+For Responses endpoints, use the separate Responses wire helpers rather than adapting a Chat Completions body:
+
+```php
+use AiSdk\OpenAICompatible\ResponsesRequestBuilder;
+use AiSdk\OpenAICompatible\ResponsesResponseParser;
+
+$body = ResponsesRequestBuilder::build($modelId, $providerName, $request, stream: false);
+$payload = $this->runner()->postJson($url, $body, $headers, $providerName);
+$response = ResponsesResponseParser::parse($payload, $providerName);
+```
+
+For streaming, pass parsed SSE events to `ResponsesStreamParser::parse()` in the same way Chat Completions providers use `ChatStreamParser`.
 
 For image generation endpoints:
 
@@ -72,7 +88,7 @@ To build a provider on top of this package:
 
 1. Depend on `aisdk/core` and `aisdk/openai-compatible`.
 2. Create a provider class extending `BaseProvider`.
-3. Create a text model extending `BaseModel` that calls `ChatRequestBuilder::build()`, `ChatResponseParser::parse()`, and `ChatStreamParser::parse()`.
+3. Create a text model extending `BaseModel` and select either the Chat Completions helpers or the Responses helpers for the provider endpoint.
 4. Add provider-specific auth, base URL, headers, and adapter capabilities.
 5. Apply any provider-specific adaptations (e.g., structured output downgrades) after calling `ChatRequestBuilder::build()`.
 
