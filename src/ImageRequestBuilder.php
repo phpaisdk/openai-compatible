@@ -15,6 +15,8 @@ final class ImageRequestBuilder
     /**
      * @param  array{
      *     aspectRatioParameter?: string|null,
+     *     includeCount?: bool,
+     *     includeProviderOptions?: bool,
      *     inferSizeFromAspectRatio?: bool,
      *     includeResponseFormat?: bool,
      *     sizeParameter?: string|null,
@@ -27,8 +29,11 @@ final class ImageRequestBuilder
         $body = [
             'model' => $modelId,
             'prompt' => $request->prompt,
-            'n' => $request->count,
         ];
+
+        if (($options['includeCount'] ?? true) === true) {
+            $body['n'] = $request->count;
+        }
 
         if (($options['includeResponseFormat'] ?? true) === true) {
             $body['response_format'] = 'b64_json';
@@ -56,14 +61,16 @@ final class ImageRequestBuilder
             $body[$seedParameter] = $request->seed;
         }
 
-        $providerOptions = $request->providerOptionsFor($providerName);
-        $raw = $providerOptions['raw'] ?? null;
-        unset($providerOptions['raw']);
+        if (($options['includeProviderOptions'] ?? true) === true) {
+            $providerOptions = $request->providerOptionsFor($providerName);
+            $raw = $providerOptions['raw'] ?? null;
+            unset($providerOptions['raw']);
 
-        $body = array_replace($body, $providerOptions);
+            $body = array_replace($body, $providerOptions);
 
-        if (is_array($raw)) {
-            $body = array_replace($body, $raw);
+            if (is_array($raw)) {
+                $body = array_replace($body, $raw);
+            }
         }
 
         return $body;

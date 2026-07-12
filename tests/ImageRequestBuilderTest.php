@@ -47,3 +47,29 @@ it('can build provider-specific image payload variants without duplicating build
         'resolution' => '2k',
     ])->and($body)->not->toHaveKey('size');
 });
+
+it('can omit unsupported fields for constrained image endpoints', function () {
+    $body = ImageRequestBuilder::build(
+        'image-model',
+        'ollama',
+        new ImageRequest(
+            prompt: 'A tiny robot',
+            count: 2,
+            size: '1024x1024',
+            seed: 42,
+            providerOptions: ['ollama' => ['raw' => ['quality' => 'high']]],
+        ),
+        [
+            'includeCount' => false,
+            'includeProviderOptions' => false,
+            'seedParameter' => null,
+        ],
+    );
+
+    expect($body)->toBe([
+        'model' => 'image-model',
+        'prompt' => 'A tiny robot',
+        'response_format' => 'b64_json',
+        'size' => '1024x1024',
+    ]);
+});
