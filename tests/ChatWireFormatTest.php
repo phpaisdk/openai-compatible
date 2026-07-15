@@ -16,6 +16,7 @@ use AiSdk\Requests\ImageRequest;
 use AiSdk\Requests\TextModelRequest;
 use AiSdk\Streaming\StreamState;
 
+/** @param array<string, mixed> $overrides */
 function request(array $overrides = []): TextModelRequest
 {
     return new TextModelRequest(
@@ -163,10 +164,10 @@ it('rejects malformed stream events instead of silently dropping them', function
 
 it('parses streamed tool-call fragments into one accumulated call', function () {
     $events = [
-        ['event' => null, 'data' => json_encode(['id' => 'chatcmpl_stream', 'model' => 'gpt-4o', 'choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'call_1', 'function' => ['name' => 'weather', 'arguments' => '']]]]]]])],
-        ['event' => null, 'data' => json_encode(['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => '{"ci']]]]]]])],
-        ['event' => null, 'data' => json_encode(['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => 'ty":"Oslo"}']]]]]]])],
-        ['event' => null, 'data' => json_encode(['choices' => [['index' => 0, 'delta' => [], 'finish_reason' => 'tool_calls']]])],
+        ['event' => null, 'data' => json_encode(['id' => 'chatcmpl_stream', 'model' => 'gpt-4o', 'choices' => [['delta' => ['tool_calls' => [['index' => 0, 'id' => 'call_1', 'function' => ['name' => 'weather', 'arguments' => '']]]]]]], JSON_THROW_ON_ERROR)],
+        ['event' => null, 'data' => json_encode(['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => '{"ci']]]]]]], JSON_THROW_ON_ERROR)],
+        ['event' => null, 'data' => json_encode(['choices' => [['delta' => ['tool_calls' => [['index' => 0, 'function' => ['arguments' => 'ty":"Oslo"}']]]]]]], JSON_THROW_ON_ERROR)],
+        ['event' => null, 'data' => json_encode(['choices' => [['index' => 0, 'delta' => [], 'finish_reason' => 'tool_calls']]], JSON_THROW_ON_ERROR)],
         ['event' => null, 'data' => '[DONE]'],
     ];
 

@@ -78,10 +78,16 @@ it('parses Responses streaming events', function () {
         ], JSON_THROW_ON_ERROR)],
     ], 'amazon-bedrock'));
 
+    $text = $parts[1] ?? null;
+    $finish = $parts[2] ?? null;
+    if (! $text instanceof TextDeltaPart || ! $finish instanceof FinishPart) {
+        throw new LogicException('Expected normalized Responses stream parts.');
+    }
+
     expect($parts)->toHaveCount(3)
-        ->and($parts[1])->toBeInstanceOf(TextDeltaPart::class)
-        ->and($parts[1]->text)->toBe('Hi')
-        ->and($parts[2])->toBeInstanceOf(FinishPart::class)
-        ->and($parts[2]->reason)->toBe(FinishReason::Stop)
-        ->and($parts[2]->usage->totalTokens)->toBe(3);
+        ->and($text)->toBeInstanceOf(TextDeltaPart::class)
+        ->and($text->text)->toBe('Hi')
+        ->and($finish)->toBeInstanceOf(FinishPart::class)
+        ->and($finish->reason)->toBe(FinishReason::Stop)
+        ->and($finish->usage->totalTokens)->toBe(3);
 });
