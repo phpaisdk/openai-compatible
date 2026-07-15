@@ -118,10 +118,11 @@ $parsed = TranscriptionResponseParser::parse($response, $providerName);
 To build a provider on top of this package:
 
 1. Depend on `aisdk/core` and `aisdk/openai-compatible`.
-2. Create a provider class extending `BaseProvider`.
-3. Create a text model extending `BaseModel` and select either the Chat Completions helpers or the Responses helpers for the provider endpoint.
-4. Add provider-specific auth, base URL, headers, and adapter capabilities.
-5. Apply any provider-specific adaptations (e.g., structured output downgrades) after calling `ChatRequestBuilder::build()`.
+2. Create a provider class extending `BaseProvider` and implement protected capability hooks such as `textModel()` or `embeddingModel()`.
+3. Expose only `Provider::model('model-id')` from the public facade, delegating to the provider instance's `model()` method.
+4. Create a text model extending `BaseModel` and select either the Chat Completions helpers or the Responses helpers for the provider endpoint.
+5. Add provider-specific auth, base URL, headers, and adapter capabilities.
+6. Apply any provider-specific adaptations (e.g., structured output downgrades) after calling `ChatRequestBuilder::build()`.
 
 For embeddings, create a model implementing `EmbeddingModelInterface`, call `EmbeddingRequestBuilder::build()`, then parse the provider payload with `EmbeddingResponseParser::parse()`. For image generation, create an image model implementing `ImageModelInterface`, call `ImageRequestBuilder::build()`, then parse the provider payload with `ImageResponseParser::parse()`. For speech generation, create a speech model implementing `SpeechModelInterface`, call `SpeechRequestBuilder::build()`, then parse the raw audio response with `SpeechResponseParser::parse()`. For transcription, implement `TranscriptionModelInterface`, send the multipart body from `TranscriptionRequestBuilder`, then normalize the response with `TranscriptionResponseParser`. Provider packages still own authentication, endpoint paths, adapter capabilities, and public facades. Model IDs should pass through as opaque provider values instead of being maintained as a package-owned inventory.
 

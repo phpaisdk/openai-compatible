@@ -7,6 +7,7 @@ namespace AiSdk\OpenAICompatible;
 use AiSdk\ContentSource;
 use AiSdk\Exceptions\InvalidArgumentException;
 use AiSdk\Requests\TranscriptionRequest;
+use AiSdk\Utils\Support\MultipartFormData as CoreMultipartFormData;
 
 final class TranscriptionRequestBuilder
 {
@@ -50,7 +51,7 @@ final class TranscriptionRequestBuilder
 
             $parts[] = ['name' => 'url', 'value' => (string) $audio->url()];
 
-            return MultipartFormData::encode($parts);
+            return CoreMultipartFormData::encode($parts);
         }
 
         $bytes = self::audioBytes($request);
@@ -65,7 +66,7 @@ final class TranscriptionRequestBuilder
             'contentType' => $mimeType,
         ];
 
-        return MultipartFormData::encode($parts);
+        return CoreMultipartFormData::encode($parts);
     }
 
     public static function format(string $mimeType, ?string $filename = null): string
