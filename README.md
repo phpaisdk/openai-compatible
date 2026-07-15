@@ -17,6 +17,7 @@ It owns:
 - Response parsing (`ChatResponseParser`)
 - SSE stream parsing (`ChatStreamParser`)
 - Responses request body building (`ResponsesRequestBuilder`)
+- Responses request profiles (`ResponsesRequestProfile`)
 - Responses response parsing (`ResponsesResponseParser`)
 - Responses SSE stream parsing (`ResponsesStreamParser`)
 - Embedding request body building (`EmbeddingRequestBuilder`)
@@ -63,6 +64,8 @@ $response = ResponsesResponseParser::parse($payload, $providerName);
 ```
 
 For streaming, pass parsed SSE events to `ResponsesStreamParser::parse()` in the same way Chat Completions providers use `ChatStreamParser`.
+
+`ResponsesRequestProfile` lets a provider declare safe endpoint differences such as its output-token field or reasoning parameter path. Unsupported portable features fail at request construction instead of being sent optimistically. Providers can still pass endpoint-specific fields through `providerOptions($providerName, [...])`.
 
 For embedding endpoints:
 
@@ -120,7 +123,7 @@ To build a provider on top of this package:
 1. Depend on `aisdk/core` and `aisdk/openai-compatible`.
 2. Create a provider class extending `BaseProvider` and implement protected capability hooks such as `textModel()` or `embeddingModel()`.
 3. Expose only `Provider::model('model-id')` from the public facade, delegating to the provider instance's `model()` method.
-4. Create a text model extending `BaseModel` and select either the Chat Completions helpers or the Responses helpers for the provider endpoint.
+4. Create a text model extending `BaseModel` and select either the Chat Completions helpers or the Responses helpers for the provider endpoint. Both paths support text, tools, structured output, reasoning, streaming, normalized usage, and provider-namespaced options; multimodal content is used only when the provider advertises the corresponding core capability.
 5. Add provider-specific auth, base URL, headers, and adapter capabilities.
 6. Apply any provider-specific adaptations (e.g., structured output downgrades) after calling `ChatRequestBuilder::build()`.
 

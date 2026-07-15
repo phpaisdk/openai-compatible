@@ -14,6 +14,7 @@ use AiSdk\OpenAICompatible\ImageResponseParser;
 use AiSdk\Reasoning;
 use AiSdk\Requests\ImageRequest;
 use AiSdk\Requests\TextModelRequest;
+use AiSdk\Schema;
 use AiSdk\Streaming\StreamState;
 
 /** @param array<string, mixed> $overrides */
@@ -79,6 +80,26 @@ it('merges the provider raw escape hatch last', function () {
 
     expect($body['temperature'])->toBe(0.1)
         ->and($body['seed'])->toBe(42);
+});
+
+it('builds native JSON Schema output and an explicit tool choice', function () {
+    $body = ChatRequestBuilder::build('gpt-4o', 'openai', new TextModelRequest(
+        messages: [Message::user('Extract an address.')],
+        output: \AiSdk\Outputs\Output::schema(Schema::object(
+            name: 'address',
+            properties: [Schema::string(name: 'city')->required()],
+        )),
+        tools: [\AiSdk\Tool::make('lookup_postcode', 'Look up a postcode')],
+        toolChoice: \AiSdk\ToolChoice::tool('lookup_postcode'),
+    ), false);
+
+    expect($body['response_format']['type'])->toBe('json_schema')
+        ->and($body['response_format']['json_schema']['name'])->toBe('address')
+        ->and($body['response_format']['json_schema']['strict'])->toBeTrue()
+        ->and($body['tool_choice'])->toBe([
+            'type' => 'function',
+            'function' => ['name' => 'lookup_postcode'],
+        ]);
 });
 
 it('parses a chat response with a tool call', function () {

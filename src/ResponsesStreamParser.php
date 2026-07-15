@@ -29,6 +29,12 @@ final class ResponsesStreamParser
         $finishReason = FinishReason::Unknown;
         $metadataEmitted = false;
 
+        /** @var array<int, string> $functionArguments */
+        $functionArguments = [];
+
+        /** @var array<int, bool> $functionCallsStarted */
+        $functionCallsStarted = [];
+
         foreach ($events as $event) {
             if ($event['data'] === '' || $event['data'] === '[DONE]') {
                 continue;
@@ -73,19 +79,49 @@ final class ResponsesStreamParser
             }
 
             if ($type === 'response.output_item.added' && is_array($payload['item'] ?? null) && ($payload['item']['type'] ?? null) === 'function_call') {
+                $index = (int) ($payload['output_index'] ?? 0);
+                $functionCallsStarted[$index] = true;
+
                 yield new ToolCallStartPart(
-                    index: (int) ($payload['output_index'] ?? 0),
+                    index: $index,
                     id: (string) ($payload['item']['call_id'] ?? $payload['item']['id'] ?? ''),
                     name: (string) ($payload['item']['name'] ?? ''),
                 );
             }
 
             if ($type === 'response.function_call_arguments.delta' && is_string($payload['delta'] ?? null)) {
+                $index = (int) ($payload['output_index'] ?? 0);
+                $functionArguments[$index] = ($functionArguments[$index] ?? '') . $payload['delta'];
+
                 yield new ToolCallDeltaPart(
-                    index: (int) ($payload['output_index'] ?? 0),
+                    index: $index,
                     argsJson: $payload['delta'],
                     id: isset($payload['item_id']) ? (string) $payload['item_id'] : null,
                 );
+            }
+
+            if ($type === 'response.output_item.done' && is_array($payload['item'] ?? null) && ($payload['item']['type'] ?? null) === 'function_call') {
+                $item = $payload['item'];
+                $index = (int) ($payload['output_index'] ?? 0);
+
+                if (! isset($functionCallsStarted[$index])) {
+                    $functionCallsStarted[$index] = true;
+                    yield new ToolCallStartPart(
+                        index: $index,
+                        id: (string) ($item['call_id'] ?? $item['id'] ?? ''),
+                        name: (string) ($item['name'] ?? ''),
+                    );
+                }
+
+                $arguments = $item['arguments'] ?? null;
+                if (is_string($arguments) && $arguments !== '' && ($functionArguments[$index] ?? '') === '') {
+                    yield new ToolCallDeltaPart(
+                        index: $index,
+                        argsJson: $arguments,
+                        id: (string) ($item['call_id'] ?? $item['id'] ?? ''),
+                        name: (string) ($item['name'] ?? ''),
+                    );
+                }
             }
 
             if (in_array($type, ['response.completed', 'response.incomplete'], true) && is_array($payload['response'] ?? null)) {

@@ -1,11 +1,12 @@
 {
     "name": "aisdk/openai-compatible",
-    "description": "Shared OpenAI-compatible chat-completions wire format (request builder, response/stream parsers) for the PHP AI SDK.",
+    "description": "Shared OpenAI-compatible Chat Completions and Responses API wire helpers for the PHP AI SDK.",
     "license": "MIT",
     "keywords": [
         "ai",
         "aisdk",
         "chat-completions",
+        "responses-api",
         "llm",
         "openai-compatible"
     ],

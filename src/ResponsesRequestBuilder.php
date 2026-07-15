@@ -19,19 +19,25 @@ final class ResponsesRequestBuilder
         string $providerName,
         TextModelRequest $request,
         bool $stream,
+        ?ResponsesRequestProfile $profile = null,
     ): array {
+        $profile ??= new ResponsesRequestProfile();
+
         $body = [
             'model' => $modelId,
             'input' => ResponsesInputConverter::convert($request->messages),
-            'max_output_tokens' => $request->maxTokens,
             'stream' => $stream,
         ];
+
+        if ($profile->maxOutputTokensParameter !== null) {
+            $body[$profile->maxOutputTokensParameter] = $request->maxTokens;
+        }
 
         if ($request->system !== null && $request->system !== '') {
             $body['instructions'] = $request->system;
         }
 
-        if ($request->reasoning === null) {
+        if ($profile->includeTemperature && ! ($profile->omitSamplingWhenReasoning && $request->reasoning !== null)) {
             $body['temperature'] = $request->temperature;
 
             if ($request->topP !== null) {
@@ -44,7 +50,11 @@ final class ResponsesRequestBuilder
         }
 
         if ($request->reasoning?->effort !== null) {
-            $body['reasoning'] = ['effort' => $request->reasoning->effort];
+            if ($profile->reasoningEffortParameter === null) {
+                throw new InvalidArgumentException("Provider [{$providerName}] does not support portable reasoning effort through its Responses adapter.");
+            }
+
+            self::setPath($body, $profile->reasoningEffortParameter, $request->reasoning->effort);
         }
 
         if ($request->tools !== []) {
@@ -53,6 +63,10 @@ final class ResponsesRequestBuilder
         }
 
         if ($request->output instanceof Output) {
+            if (! $profile->supportsStructuredOutput) {
+                throw new InvalidArgumentException("Provider [{$providerName}] does not support structured output through its Responses adapter.");
+            }
+
             $body['text'] = ['format' => self::outputFormat($request->output)];
         }
 
@@ -67,6 +81,23 @@ final class ResponsesRequestBuilder
         }
 
         return $body;
+    }
+
+    /** @param array<string, mixed> $body */
+    private static function setPath(array &$body, string $path, mixed $value): void
+    {
+        $segments = explode('.', $path);
+        $target = & $body;
+
+        foreach ($segments as $segment) {
+            if (! isset($target[$segment]) || ! is_array($target[$segment])) {
+                $target[$segment] = [];
+            }
+
+            $target = & $target[$segment];
+        }
+
+        $target = $value;
     }
 
     /** @return array<string, mixed> */
