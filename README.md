@@ -143,7 +143,13 @@ For embeddings, create a model implementing `EmbeddingModelInterface`, call `Emb
 composer test
 ```
 
-## Links
+## Documentation
 
-- [Core Package](https://github.com/phpaisdk/core)
-- [Project Documentation](https://github.com/phpaisdk)
+- [PHP AI SDK documentation](https://phpaisdk.com/docs)
+- [OpenAI-compatible documentation](https://phpaisdk.com/docs/advanced/openai-compatible-package)
+
+## Community
+
+- [Contributing](https://github.com/phpaisdk/.github/blob/main/CONTRIBUTING.md)
+- [Support](https://github.com/phpaisdk/.github/blob/main/SUPPORT.md)
+- For private security reports, email [security@phpaisdk.com](mailto:security@phpaisdk.com).
