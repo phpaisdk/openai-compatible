@@ -142,6 +142,7 @@ it('builds multimodal structured Responses requests with tools and provider opti
 it('allows providers to profile Responses wire differences explicitly', function () {
     $request = new TextModelRequest(
         messages: [Message::user('Hello')],
+        maxTokens: 128,
         reasoning: Reasoning::effort('high'),
     );
 

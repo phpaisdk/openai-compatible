@@ -23,6 +23,8 @@ function request(array $overrides = []): TextModelRequest
     return new TextModelRequest(
         messages: $overrides['messages'] ?? [Message::user('Hi')],
         system: $overrides['system'] ?? null,
+        maxTokens: $overrides['maxTokens'] ?? null,
+        temperature: $overrides['temperature'] ?? null,
         reasoning: $overrides['reasoning'] ?? null,
         providerOptions: $overrides['providerOptions'] ?? [],
     );
@@ -37,6 +39,16 @@ it('builds a basic chat body', function () {
         ->and($body['stream'])->toBeFalse();
 });
 
+it('omits max tokens and temperature unless the caller sets them', function () {
+    $body = ChatRequestBuilder::build('gpt-4o', 'openai', request(), false);
+
+    expect($body)->not->toHaveKeys(['max_tokens', 'max_completion_tokens', 'temperature']);
+
+    $body = ChatRequestBuilder::build('gpt-4o', 'openai', request(['maxTokens' => 64, 'temperature' => 0.0]), false);
+
+    expect($body['max_tokens'])->toBe(64)->and($body['temperature'])->toBe(0.0);
+});
+
 it('maps reasoning effort through a single path', function () {
     $body = ChatRequestBuilder::build('o3', 'openai', request(['reasoning' => Reasoning::effort('high')]), false);
 
@@ -47,7 +59,7 @@ it('uses the OpenAI request profile for modern token limits', function () {
     $body = ChatRequestBuilder::build(
         'gpt-4o',
         'openai',
-        request(),
+        request(['maxTokens' => 256]),
         false,
         ChatRequestProfile::openAI('gpt-4o'),
     );

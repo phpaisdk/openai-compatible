@@ -35,11 +35,11 @@ final class ChatRequestBuilder
             'stream' => $stream,
         ];
 
-        if ($profile->includeTemperature && ! ($profile->omitTemperatureWhenReasoning && $request->reasoning !== null)) {
+        if ($request->temperature !== null && $profile->includeTemperature && ! ($profile->omitTemperatureWhenReasoning && $request->reasoning !== null)) {
             $body['temperature'] = $request->temperature;
         }
 
-        if ($profile->maxTokensParameter !== null) {
+        if ($request->maxTokens !== null && $profile->maxTokensParameter !== null) {
             $body[$profile->maxTokensParameter] = $request->maxTokens;
         }
 

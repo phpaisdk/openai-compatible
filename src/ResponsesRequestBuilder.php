@@ -29,7 +29,7 @@ final class ResponsesRequestBuilder
             'stream' => $stream,
         ];
 
-        if ($profile->maxOutputTokensParameter !== null) {
+        if ($request->maxTokens !== null && $profile->maxOutputTokensParameter !== null) {
             $body[$profile->maxOutputTokensParameter] = $request->maxTokens;
         }
 
@@ -38,7 +38,9 @@ final class ResponsesRequestBuilder
         }
 
         if ($profile->includeTemperature && ! ($profile->omitSamplingWhenReasoning && $request->reasoning !== null)) {
-            $body['temperature'] = $request->temperature;
+            if ($request->temperature !== null) {
+                $body['temperature'] = $request->temperature;
+            }
 
             if ($request->topP !== null) {
                 $body['top_p'] = $request->topP;
