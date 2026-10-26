@@ -37,6 +37,10 @@ final class ResponsesRequestBuilder
             $body['instructions'] = $request->system;
         }
 
+        if ($profile->supportsPromptCacheKey && $request->cache?->key !== null) {
+            $body['prompt_cache_key'] = $request->cache->key;
+        }
+
         if ($profile->includeTemperature && ! ($profile->omitSamplingWhenReasoning && $request->reasoning !== null)) {
             if ($request->temperature !== null) {
                 $body['temperature'] = $request->temperature;

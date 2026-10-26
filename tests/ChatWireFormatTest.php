@@ -350,3 +350,16 @@ it('uses the top-level output format as the generated image mime type', function
 it('rejects image responses without generated image data', function () {
     ImageResponseParser::parse(['data' => []], 'openai-compatible');
 })->throws(\AiSdk\Exceptions\InvalidResponseException::class);
+
+it('sends prompt_cache_key only for profiles that support it', function () {
+    $cache = AiSdk\PromptCache::key('tenant-42');
+    $request = new TextModelRequest(messages: [Message::user('Hi')], cache: $cache);
+
+    $openAi = ChatRequestBuilder::build('gpt-4o', 'openai', $request, false, ChatRequestProfile::openAI('gpt-4o'));
+    $generic = ChatRequestBuilder::build('some-model', 'groq', $request, false);
+    $noKey = ChatRequestBuilder::build('gpt-4o', 'openai', new TextModelRequest(messages: [Message::user('Hi')], cache: AiSdk\PromptCache::auto()), false, ChatRequestProfile::openAI('gpt-4o'));
+
+    expect($openAi['prompt_cache_key'])->toBe('tenant-42')
+        ->and($generic)->not->toHaveKey('prompt_cache_key')
+        ->and($noKey)->not->toHaveKey('prompt_cache_key');
+});

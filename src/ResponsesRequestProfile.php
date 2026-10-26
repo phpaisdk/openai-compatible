@@ -18,5 +18,6 @@ final readonly class ResponsesRequestProfile
         public bool $omitSamplingWhenReasoning = true,
         public bool $supportsStructuredOutput = true,
         public ?string $reasoningEffortParameter = 'reasoning.effort',
+        public bool $supportsPromptCacheKey = false,
     ) {}
 }

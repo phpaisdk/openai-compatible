@@ -47,6 +47,10 @@ final class ChatRequestBuilder
             $body['top_p'] = $request->topP;
         }
 
+        if ($profile->supportsPromptCacheKey && $request->cache?->key !== null) {
+            $body['prompt_cache_key'] = $request->cache->key;
+        }
+
         if ($request->tools !== []) {
             $body['tools'] = ChatToolConverter::convert($request->tools);
             $body['tool_choice'] = ChatToolConverter::choice($request->toolChoice);

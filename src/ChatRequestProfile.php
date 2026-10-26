@@ -18,6 +18,7 @@ final readonly class ChatRequestProfile
         public bool $includeStreamOptions = true,
         public bool $supportsStructuredOutput = true,
         public ?string $reasoningEffortParameter = 'reasoning_effort',
+        public bool $supportsPromptCacheKey = false,
     ) {}
 
     public static function openAI(string $modelId): self
@@ -26,6 +27,7 @@ final readonly class ChatRequestProfile
             maxTokensParameter: 'max_completion_tokens',
             includeTemperature: ! self::isReasoningModel($modelId),
             omitTemperatureWhenReasoning: true,
+            supportsPromptCacheKey: true,
         );
     }
 
