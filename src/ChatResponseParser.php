@@ -69,6 +69,11 @@ final class ChatResponseParser
             finishReason: MapsFinishReason::map(isset($choice['finish_reason']) ? (string) $choice['finish_reason'] : null),
             usage: $usage,
             rawResponse: $payload,
+            response: new \AiSdk\Responses\ResponseMetadata(
+                id: is_string($payload['id'] ?? null) ? $payload['id'] : null,
+                model: is_string($payload['model'] ?? null) ? $payload['model'] : null,
+                rawFinishReason: is_string($choice['finish_reason'] ?? null) ? ($choice['finish_reason'] ?? null) : null,
+            ),
             providerMetadata: [$providerName => self::metadata($payload, $choice)],
         );
     }

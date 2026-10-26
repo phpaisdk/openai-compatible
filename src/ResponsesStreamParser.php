@@ -28,6 +28,7 @@ final class ResponsesStreamParser
         $usage = Usage::empty();
         $finishReason = FinishReason::Unknown;
         $metadataEmitted = false;
+        $responseIdentity = new \AiSdk\Responses\ResponseMetadata();
 
         /** @var array<int, string> $functionArguments */
         $functionArguments = [];
@@ -127,6 +128,12 @@ final class ResponsesStreamParser
             if (in_array($type, ['response.completed', 'response.incomplete'], true) && is_array($payload['response'] ?? null)) {
                 $response = $payload['response'];
                 $finishReason = ResponsesResponseParser::finishReason($response);
+                $raw = $response['incomplete_details']['reason'] ?? $response['status'] ?? null;
+                $responseIdentity = new \AiSdk\Responses\ResponseMetadata(
+                    is_string($response['id'] ?? null) ? $response['id'] : null,
+                    is_string($response['model'] ?? null) ? $response['model'] : null,
+                    is_string($raw) ? $raw : null,
+                );
 
                 if (isset($response['usage']) && is_array($response['usage'])) {
                     $usage = ResponsesUsage::fromArray($response['usage']);
@@ -134,6 +141,6 @@ final class ResponsesStreamParser
             }
         }
 
-        yield new FinishPart($finishReason, $usage);
+        yield new FinishPart($finishReason, $usage, $responseIdentity);
     }
 }

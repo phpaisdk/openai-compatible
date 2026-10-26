@@ -31,6 +31,7 @@ final class ChatStreamParser
     {
         $usage = Usage::empty();
         $finishReason = null;
+        $id = $model = $rawFinishReason = null;
         $emittedResponseMetadata = false;
 
         /** @var array<int, bool> $started */
@@ -51,6 +52,8 @@ final class ChatStreamParser
                 );
             }
 
+            $id = is_string($payload['id'] ?? null) ? $payload['id'] : $id;
+            $model = is_string($payload['model'] ?? null) ? $payload['model'] : $model;
             $error = $payload['error'] ?? null;
             if (is_array($error) || is_string($error)) {
                 $message = is_array($error) && is_string($error['message'] ?? null)
@@ -124,12 +127,13 @@ final class ChatStreamParser
             }
 
             if (isset($choice['finish_reason'])) {
+                $rawFinishReason = (string) $choice['finish_reason'];
                 $finishReason = MapsFinishReason::map((string) $choice['finish_reason']);
                 yield new ProviderMetadataPart($providerName, self::choiceMetadata($choice));
             }
         }
 
-        yield new FinishPart($finishReason ?? MapsFinishReason::map(null), $usage);
+        yield new FinishPart($finishReason ?? MapsFinishReason::map(null), $usage, new \AiSdk\Responses\ResponseMetadata($id, $model, $rawFinishReason));
     }
 
     /**

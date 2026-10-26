@@ -68,6 +68,11 @@ final class ResponsesResponseParser
             finishReason: self::finishReason($payload),
             usage: $usage,
             rawResponse: $payload,
+            response: new \AiSdk\Responses\ResponseMetadata(
+                id: is_string($payload['id'] ?? null) ? $payload['id'] : null,
+                model: is_string($payload['model'] ?? null) ? $payload['model'] : null,
+                rawFinishReason: is_string($payload['incomplete_details']['reason'] ?? $payload['status'] ?? null) ? ($payload['incomplete_details']['reason'] ?? $payload['status'] ?? null) : null,
+            ),
             providerMetadata: [$providerName => self::metadata($payload)],
         );
     }
