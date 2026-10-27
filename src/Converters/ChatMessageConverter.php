@@ -18,7 +18,7 @@ final class ChatMessageConverter
      * @param  array<int, Message>  $messages
      * @return array<int, array<string, mixed>>
      */
-    public static function convert(array $messages, ?string $system = null): array
+    public static function convert(array $messages, ?string $system = null, ?string $provider = null): array
     {
         $out = [];
 
@@ -27,7 +27,7 @@ final class ChatMessageConverter
         }
 
         foreach ($messages as $message) {
-            $out[] = self::convertMessage($message);
+            $out[] = self::convertMessage($message, $provider);
         }
 
         return $out;
@@ -36,7 +36,7 @@ final class ChatMessageConverter
     /**
      * @return array<string, mixed>
      */
-    private static function convertMessage(Message $message): array
+    private static function convertMessage(Message $message, ?string $provider): array
     {
         if ($message->role === Message::ROLE_TOOL) {
             return [
@@ -65,7 +65,7 @@ final class ChatMessageConverter
             ];
         }
 
-        $parts = array_map(self::convertContent(...), $message->content);
+        $parts = array_map(fn(Content $content): array => self::convertContent($content, $provider), $message->content);
 
         if (count($parts) === 1 && ($parts[0]['type'] ?? null) === 'text') {
             return ['role' => $message->role, 'content' => $parts[0]['text']];
@@ -77,8 +77,16 @@ final class ChatMessageConverter
     /**
      * @return array<string, mixed>
      */
-    private static function convertContent(Content $content): array
+    private static function convertContent(Content $content, ?string $provider): array
     {
+        if (($file = $content->fileReference()) !== null) {
+            if ($provider === null || $content->type !== Content::TYPE_FILE) {
+                throw new InvalidArgumentException('Use Responses for stored images; stored documents require a provider.');
+            }
+
+            return ['type' => 'file', 'file' => ['file_id' => $file->forProvider($provider)]];
+        }
+
         return match ($content->type) {
             Content::TYPE_TEXT => ['type' => 'text', 'text' => (string) $content->textValue()],
             Content::TYPE_IMAGE => self::image($content),

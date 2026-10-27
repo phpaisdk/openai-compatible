@@ -25,7 +25,7 @@ final class ResponsesRequestBuilder
 
         $body = [
             'model' => $modelId,
-            'input' => ResponsesInputConverter::convert($request->messages),
+            'input' => ResponsesInputConverter::convert($request->messages, $providerName),
             'stream' => $stream,
         ];
 
@@ -78,7 +78,7 @@ final class ResponsesRequestBuilder
 
         $providerOptions = $request->providerOptionsFor($providerName);
         $raw = $providerOptions['raw'] ?? null;
-        unset($providerOptions['raw']);
+        unset($providerOptions['raw'], $providerOptions['api']);
 
         $body = array_replace($body, $providerOptions);
 

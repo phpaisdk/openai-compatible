@@ -16,7 +16,7 @@ final class ResponsesInputConverter
      * @param  array<int, Message>  $messages
      * @return array<int, array<string, mixed>>
      */
-    public static function convert(array $messages): array
+    public static function convert(array $messages, ?string $provider = null): array
     {
         $input = [];
 
@@ -33,7 +33,7 @@ final class ResponsesInputConverter
 
             if ($message->role === Message::ROLE_ASSISTANT && $message->toolCalls !== []) {
                 if ($message->text() !== '') {
-                    $input[] = self::message($message);
+                    $input[] = self::message($message, $provider);
                 }
 
                 foreach ($message->toolCalls as $toolCall) {
@@ -48,27 +48,38 @@ final class ResponsesInputConverter
                 continue;
             }
 
-            $input[] = self::message($message);
+            $input[] = self::message($message, $provider);
         }
 
         return $input;
     }
 
     /** @return array<string, mixed> */
-    private static function message(Message $message): array
+    private static function message(Message $message, ?string $provider): array
     {
         return [
             'role' => $message->role,
             'content' => array_map(
-                fn(Content $content): array => self::content($content, $message->role),
+                fn(Content $content): array => self::content($content, $message->role, $provider),
                 $message->content,
             ),
         ];
     }
 
     /** @return array<string, mixed> */
-    private static function content(Content $content, string $role): array
+    private static function content(Content $content, string $role, ?string $provider): array
     {
+        if (($file = $content->fileReference()) !== null) {
+            if ($provider === null) {
+                throw new InvalidArgumentException('Stored file conversion requires a provider.');
+            }
+
+            return ['type' => $content->type === Content::TYPE_IMAGE ? 'input_image' : 'input_file', 'file_id' => $file->forProvider($provider)];
+        }
+        if ($content->type === Content::TYPE_FILE && $content->source() === ContentSource::Url) {
+            return ['type' => 'input_file', 'file_url' => (string) $content->url()];
+        }
+
         return match ($content->type) {
             Content::TYPE_TEXT => [
                 'type' => $role === Message::ROLE_ASSISTANT ? 'output_text' : 'input_text',

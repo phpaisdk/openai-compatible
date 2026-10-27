@@ -31,7 +31,7 @@ final class ChatRequestBuilder
 
         $body = [
             'model' => $modelId,
-            'messages' => ChatMessageConverter::convert($request->messages, $request->system),
+            'messages' => ChatMessageConverter::convert($request->messages, $request->system, $providerName),
             'stream' => $stream,
         ];
 
@@ -82,7 +82,7 @@ final class ChatRequestBuilder
 
         $providerOptions = $request->providerOptionsFor($providerName);
         $raw = $providerOptions['raw'] ?? null;
-        unset($providerOptions['raw']);
+        unset($providerOptions['raw'], $providerOptions['api']);
 
         $body = array_replace($body, $providerOptions);
 
