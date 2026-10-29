@@ -19,6 +19,15 @@ final class SpeechResponseParser
     {
         $headers = self::metadata($response);
         $data = (string) $response->getBody();
+        $type = strtolower($response->getHeaderLine('Content-Type'));
+        if (str_contains($type, 'json') || str_contains($type, 'html')) {
+            // Audio endpoints answer with bytes. A JSON or HTML body is an error page, not speech.
+            $decoded = json_decode($data, true);
+
+            throw is_array($decoded) && isset($decoded['error'])
+                ? \AiSdk\Utils\Errors\HttpErrorNormalizer::fromStreamError($providerName, $decoded['error'])
+                : InvalidResponseException::forProvider($providerName, "Provider [{$providerName}] returned {$type} instead of audio.");
+        }
         if ($data === '') {
             throw InvalidResponseException::forProvider($providerName, "Provider [{$providerName}] returned an empty speech response.");
         }

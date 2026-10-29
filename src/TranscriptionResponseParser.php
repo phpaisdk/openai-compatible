@@ -63,9 +63,20 @@ final class TranscriptionResponseParser
     private static function payload(ResponseInterface $response): array
     {
         $body = (string) $response->getBody();
+        $trimmed = trim($body);
+        $type = strtolower($response->getHeaderLine('Content-Type'));
         $decoded = json_decode($body, true);
 
-        return is_array($decoded) ? $decoded : ['text' => $body];
+        if (is_array($decoded)) {
+            return $decoded;
+        }
+
+        // Plain-text formats (text, srt, vtt) are legitimate; empty, null, HTML or broken JSON are not.
+        if ($trimmed === '' || strcasecmp($trimmed, 'null') === 0 || str_contains($type, 'html') || str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[')) {
+            throw InvalidResponseException::forProvider('openai-compatible', 'The provider returned an empty or malformed transcription response.');
+        }
+
+        return ['text' => $body];
     }
 
     /**

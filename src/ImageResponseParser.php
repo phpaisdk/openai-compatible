@@ -18,7 +18,7 @@ final class ImageResponseParser
     {
         $images = [];
 
-        foreach (($payload['data'] ?? []) as $item) {
+        foreach ((is_array($payload['data'] ?? null) ? $payload['data'] : []) as $item) {
             if (! is_array($item)) {
                 continue;
             }
