@@ -20,12 +20,22 @@ final class ChatUsage
             ?? self::arrayValue($usage, 'input_tokens_details')
             ?? [];
 
+        $cacheHit = self::intValue($usage, 'prompt_cache_hit_tokens');
+        $cacheMiss = self::intValue($usage, 'prompt_cache_miss_tokens');
+        $input = self::intValue($usage, 'prompt_tokens', 'input_tokens', 'promptTokens', 'inputTokens', 'promptTokenCount', 'prompt_token_count');
+
+        // DeepSeek's prompt_tokens already includes hits; only reconstruct it when absent.
+        $input ??= $cacheHit !== null || $cacheMiss !== null ? ($cacheHit ?? 0) + ($cacheMiss ?? 0) : 0;
+
         return new Usage(
-            inputTokens: self::intValue($usage, 'prompt_tokens', 'input_tokens', 'promptTokens', 'inputTokens', 'promptTokenCount', 'prompt_token_count') ?? 0,
+            inputTokens: $input,
             outputTokens: self::intValue($usage, 'completion_tokens', 'output_tokens', 'completionTokens', 'outputTokens', 'candidatesTokenCount', 'candidates_token_count') ?? 0,
             totalTokens: self::intValue($usage, 'total_tokens', 'totalTokens', 'totalTokenCount', 'total_token_count'),
             reasoningTokens: self::intValue($details, 'reasoning_tokens', 'reasoningTokens', 'thoughtsTokenCount', 'thoughts_token_count'),
-            cachedInputTokens: self::intValue($promptDetails, 'cached_tokens', 'cachedTokens', 'cached_input_tokens', 'cachedInputTokens'),
+            cachedInputTokens: self::intValue($promptDetails, 'cached_tokens', 'cachedTokens', 'cached_input_tokens', 'cachedInputTokens')
+                ?? $cacheHit
+                ?? self::intValue($usage, 'cached_tokens'),
+            cacheWriteInputTokens: self::intValue($promptDetails, 'cache_write_tokens'),
         );
     }
 

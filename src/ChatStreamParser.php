@@ -66,8 +66,9 @@ final class ChatStreamParser
                 throw \AiSdk\Utils\Errors\HttpErrorNormalizer::fromStreamError($providerName, $error);
             }
 
-            if (isset($payload['usage']) && is_array($payload['usage'])) {
-                $usage = ChatUsage::fromArray($payload['usage']);
+            $usageData = $payload['usage'] ?? $payload['x_groq']['usage'] ?? null;
+            if (is_array($usageData)) {
+                $usage = ChatUsage::fromArray($usageData);
             }
 
             if (! $emittedResponseMetadata) {
@@ -80,7 +81,7 @@ final class ChatStreamParser
 
             $choice = $payload['choices'][0] ?? null;
             if ($choice === null) {
-                if (! isset($payload['usage'])) {
+                if (! is_array($usageData)) {
                     throw InvalidResponseException::forProvider(
                         $providerName,
                         "Provider [{$providerName}] returned a stream event without choices or usage.",

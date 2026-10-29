@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace AiSdk\OpenAICompatible;
 
 use AiSdk\Exceptions\InvalidResponseException;
+use AiSdk\OpenAICompatible\Support\ChatUsage;
 use AiSdk\Responses\ImageResponse;
 use AiSdk\Results\ImageData;
-use AiSdk\Support\Usage;
 
 final class ImageResponseParser
 {
@@ -44,11 +44,7 @@ final class ImageResponseParser
 
         return new ImageResponse(
             images: $images,
-            usage: new Usage(
-                inputTokens: self::intValue($usage, 'input_tokens') ?? self::intValue($usage, 'prompt_tokens') ?? 0,
-                outputTokens: self::intValue($usage, 'output_tokens') ?? self::intValue($usage, 'completion_tokens') ?? 0,
-                totalTokens: self::intValue($usage, 'total_tokens'),
-            ),
+            usage: ChatUsage::fromArray($usage),
             rawResponse: $payload,
             providerMetadata: [
                 $providerName => array_filter([
@@ -61,14 +57,6 @@ final class ImageResponseParser
                 ], static fn($value): bool => $value !== null),
             ],
         );
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private static function intValue(array $payload, string $key): ?int
-    {
-        return is_int($payload[$key] ?? null) ? $payload[$key] : null;
     }
 
     /**
