@@ -28,6 +28,7 @@ final class ResponsesStreamParser
         $usage = Usage::empty();
         $finishReason = FinishReason::Unknown;
         $metadataEmitted = false;
+        $completed = false;
         $responseIdentity = new \AiSdk\Responses\ResponseMetadata();
 
         /** @var array<int, string> $functionArguments */
@@ -49,12 +50,7 @@ final class ResponsesStreamParser
             $type = (string) ($payload['type'] ?? $event['event'] ?? '');
 
             if ($type === 'error' || $type === 'response.failed') {
-                $error = $payload['error'] ?? $payload['response']['error'] ?? null;
-                $message = is_array($error) && is_string($error['message'] ?? null)
-                    ? $error['message']
-                    : "Provider [{$providerName}] returned a Responses stream error.";
-
-                throw InvalidResponseException::forProvider($providerName, $message, ['body' => $payload]);
+                throw \AiSdk\Utils\Errors\HttpErrorNormalizer::fromStreamError($providerName, $payload['error'] ?? $payload['response']['error'] ?? null);
             }
 
             if (! $metadataEmitted && isset($payload['response']) && is_array($payload['response'])) {
@@ -126,6 +122,7 @@ final class ResponsesStreamParser
             }
 
             if (in_array($type, ['response.completed', 'response.incomplete'], true) && is_array($payload['response'] ?? null)) {
+                $completed = true;
                 $response = $payload['response'];
                 $finishReason = ResponsesResponseParser::finishReason($response);
                 $raw = $response['incomplete_details']['reason'] ?? $response['status'] ?? null;
@@ -139,6 +136,10 @@ final class ResponsesStreamParser
                     $usage = ResponsesUsage::fromArray($response['usage']);
                 }
             }
+        }
+
+        if (! $completed) {
+            throw InvalidResponseException::forProvider($providerName, "Provider [{$providerName}] ended its Responses stream before completing; the response may be incomplete.");
         }
 
         yield new FinishPart($finishReason, $usage, $responseIdentity);

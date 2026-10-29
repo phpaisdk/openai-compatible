@@ -33,13 +33,20 @@ final class ChatStreamParser
         $finishReason = null;
         $id = $model = $rawFinishReason = null;
         $emittedResponseMetadata = false;
+        $done = false;
 
         /** @var array<int, bool> $started */
         $started = [];
 
         foreach ($events as $event) {
             $data = $event['data'];
-            if ($data === '' || $data === '[DONE]') {
+            if ($data === '[DONE]') {
+                $done = true;
+
+                continue;
+            }
+
+            if ($data === '') {
                 continue;
             }
 
@@ -55,12 +62,8 @@ final class ChatStreamParser
             $id = is_string($payload['id'] ?? null) ? $payload['id'] : $id;
             $model = is_string($payload['model'] ?? null) ? $payload['model'] : $model;
             $error = $payload['error'] ?? null;
-            if (is_array($error) || is_string($error)) {
-                $message = is_array($error) && is_string($error['message'] ?? null)
-                    ? $error['message']
-                    : (is_string($error) ? $error : "Provider [{$providerName}] returned a stream error.");
-
-                throw InvalidResponseException::forProvider($providerName, $message, ['body' => $payload]);
+            if (is_array($error) || (is_string($error) && $error !== '')) {
+                throw \AiSdk\Utils\Errors\HttpErrorNormalizer::fromStreamError($providerName, $error);
             }
 
             if (isset($payload['usage']) && is_array($payload['usage'])) {
@@ -92,7 +95,7 @@ final class ChatStreamParser
                 throw InvalidResponseException::forProvider($providerName, "Provider [{$providerName}] returned an invalid stream choice.", ['body' => $payload]);
             }
 
-            $delta = $choice['delta'] ?? [];
+            $delta = is_array($choice['delta'] ?? null) ? $choice['delta'] : [];
 
             if (isset($delta['content']) && is_string($delta['content']) && $delta['content'] !== '') {
                 yield new TextDeltaPart($delta['content']);
@@ -103,7 +106,11 @@ final class ChatStreamParser
                 yield new ReasoningDeltaPart($reasoning);
             }
 
-            foreach (($delta['tool_calls'] ?? []) as $call) {
+            foreach ((is_array($delta['tool_calls'] ?? null) ? $delta['tool_calls'] : []) as $call) {
+                if (! is_array($call)) {
+                    continue;
+                }
+
                 $index = (int) ($call['index'] ?? 0);
 
                 if (! isset($started[$index]) && isset($call['id'])) {
@@ -131,6 +138,13 @@ final class ChatStreamParser
                 $finishReason = MapsFinishReason::map((string) $choice['finish_reason']);
                 yield new ProviderMetadataPart($providerName, self::choiceMetadata($choice));
             }
+        }
+
+        if ($finishReason === null && ! $done) {
+            throw InvalidResponseException::forProvider(
+                $providerName,
+                "Provider [{$providerName}] ended its event stream before finishing; the response may be incomplete.",
+            );
         }
 
         yield new FinishPart($finishReason ?? MapsFinishReason::map(null), $usage, new \AiSdk\Responses\ResponseMetadata($id, $model, $rawFinishReason));
