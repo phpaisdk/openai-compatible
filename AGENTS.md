@@ -32,3 +32,7 @@ Provider packages consume a released version of this package; bump their `aisdk/
 ## Docs
 
 https://phpaisdk.com/docs/openai-compatible-package.md · https://phpaisdk.com/llms.txt
+
+## Changelog
+
+Keep `CHANGELOG.md` current: add short, user-facing entries (what users can do now, dependency compatibility) for every release. Release notes on GitHub should match.
