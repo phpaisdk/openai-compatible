@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace AiSdk\OpenAICompatible\Files;
 
 use AiSdk\Contracts\FileStoreInterface;
+use AiSdk\Exceptions\InvalidArgumentException;
 use AiSdk\Exceptions\InvalidResponseException;
 use AiSdk\Files\FilePage;
 use AiSdk\Files\FileReference;
@@ -39,7 +40,7 @@ final readonly class CompatibleFileStore implements FileStoreInterface
     public function list(?string $cursor = null, int $limit = 20): FilePage
     {
         if ($limit < 1 || $limit > $this->maxPageSize) {
-            throw new \InvalidArgumentException("File page limit must be between 1 and {$this->maxPageSize}.");
+            throw new InvalidArgumentException("File page limit must be between 1 and {$this->maxPageSize}.");
         }
         $query = ['limit' => $limit];
         if ($cursor !== null) {
