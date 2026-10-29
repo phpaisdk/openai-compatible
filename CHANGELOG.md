@@ -2,6 +2,12 @@
 
 Notable changes to `aisdk/openai-compatible`. Release notes are also published at https://github.com/phpaisdk/openai-compatible/releases.
 
+## Unreleased (v0.10.1)
+
+- Chat and Responses streams that end before finishing now fail instead of looking complete; in-stream errors are typed; malformed deltas are ignored.
+- Speech endpoints that return JSON or HTML, empty or malformed transcripts, and malformed image data raise `InvalidResponseException`.
+- Raise SDK exceptions instead of native PHP ones.
+
 ## v0.10.0 — 2026-10-29
 
 ### What's new
