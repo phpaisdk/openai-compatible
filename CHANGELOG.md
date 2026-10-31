@@ -2,6 +2,10 @@
 
 Notable changes to `aisdk/openai-compatible`. Release notes are also published at https://github.com/phpaisdk/openai-compatible/releases.
 
+## v0.11.0 — 2026-10-31
+
+- Requires `aisdk/core ^0.11.0`. Upgrade SDK packages together; no other changes in this package.
+
 ## v0.10.2 — 2026-10-29
 
 - Preserve cached, cache-write and reasoning token subsets, including DeepSeek and Moonshot cache fields and Groq streaming usage.
