@@ -2,6 +2,10 @@
 
 Notable changes to `aisdk/openai-compatible`. Release notes are also published at https://github.com/phpaisdk/openai-compatible/releases.
 
+## v0.11.1 — 2026-11-11
+
+- The OpenAI-compatible test suite now supports Pest 3, 4, and 5.
+
 ## v0.11.0 — 2026-10-31
 
 - Requires `aisdk/core ^0.11.0`. Upgrade SDK packages together; no other changes in this package.
